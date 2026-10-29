@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Fiche d’opportunité – Porteurs de projets agricoles</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8C%B1%3C/text%3E%3C/svg%3E">
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
 --bg:#f6f4ee;--card:#fff;--tx:#1f2a22;--mu:#66716a;--ac:#2e6b45;--ac2:#e4efe7;--bd:#d8d6cc;--er:#b3261e}
@@ -201,20 +202,29 @@ const slug=s=>(s||"projet").normalize("NFD").replace(/[\u0300-\u036f]/g,"").repl
 let dl=null,db=null,user=null;
 const toast=(m,e)=>{const t=$("toast");t.textContent=m;t.className="msg"+(e?" er":"");t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,6000)};
 async function saveWord(list,name,custom){
- if(!dl){toast("Le téléchargement n’est pas disponible dans cette vue.",1);return false}
+ if(!dl){try{const bl=await buildDocx(list,custom),u=URL.createObjectURL(bl),a=document.createElement("a");a.href=u;a.download=name+".docx";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);toast("✅ Fichier Word téléchargé : "+name+".docx");return true}catch(e){toast("Échec de la génération : "+((e&&e.message)||e),1);return false}}
  try{await dl.save({filename:name+".docx",data:await buildDocx(list,custom)});toast("✅ Téléchargement lancé : "+name+".docx");return true}
  catch(e){if(e&&e.code==="declined")return false;toast("Échec de la génération : "+((e&&(e.message||e.code))||e),1);return false}
 }
 
 // ---- Envoi
+async function sendMail(d){
+ const blob=await buildDocx([d]),fd=new FormData(),name="Fiche_"+slug(d.porteur||d.titre).replace(/-/g,"_")+".docx";
+ fd.append("_subject","Nouvelle fiche projet – "+(d.titre||""));fd.append("_captcha","false");fd.append("_template","table");
+ [["Porteur",d.porteur],["Projet",d.titre],["Type",d.type],["Localisation",d.loc],["Montant recherché",money(d.montant)],["Contact",d.contact]].forEach(([k,v])=>fd.append(k,v||"Non renseigné"));
+ fd.append("attachment",blob,name);
+ await fetch("https://formsubmit.co/makala.lesfermesdafrique@gmail.com",{method:"POST",body:fd,mode:"no-cors"});
+}
 $("send").onclick=async()=>{
  const d=collect(),r=$("res");
  if(!d.titre||!d.contact){r.innerHTML='<div class="msg er">Merci de renseigner au moins le titre du projet et un contact.</div>';return}
  d.date=new Date().toLocaleDateString("fr-FR");d.ts=Date.now();
  r.innerHTML="";let ok=false;
  if(db&&user){$("send").disabled=true;try{await db.doc("soumissions/"+await user.id()).set(d);ok=true}catch(e){r.innerHTML='<div class="msg er">L’envoi automatique a échoué ('+esc(e.message||e.code||"erreur")+'). Téléchargez votre fiche ci-dessous et envoyez-la par e-mail.</div>'}$("send").disabled=false}
- else r.innerHTML='<div class="msg er">L’envoi automatique n’est pas disponible dans cette vue. Ouvrez le lien officiel du questionnaire depuis votre navigateur, connecté à Claude avec l’accès donné par l’administrateur, puis réessayez. À défaut, téléchargez votre fiche et envoyez-la par e-mail.</div>';
- r.innerHTML+=(ok?'<div class="msg">✅ Merci ! Votre projet a bien été transmis.</div>':"")+(!ok&&dl?'<button class="btn alt" id="mine">Télécharger ma fiche (Word)</button>':"");
+ else{$("send").disabled=true;r.innerHTML='<div class="msg">⏳ Envoi en cours…</div>';
+  try{await sendMail(d);ok=true;r.innerHTML=""}catch(e){r.innerHTML='<div class="msg er">L’envoi a échoué ('+esc((e&&e.message)||e)+'). Vérifiez votre connexion et réessayez, ou téléchargez votre fiche ci-dessous pour l’envoyer à l’administrateur.</div>'}
+  $("send").disabled=false}
+ r.innerHTML+=(ok?'<div class="msg">✅ Merci ! Votre projet a bien été transmis.</div>':"")+(!ok?'<button class="btn alt" id="mine">Télécharger ma fiche (Word)</button>':"");
  const b=$("mine");if(b)b.onclick=()=>saveWord([d],"fiche-"+slug(d.titre));
 };
 
@@ -259,7 +269,7 @@ $("gok").onclick=async()=>{
  try{user=await claude.use("user")}catch(e){}
  let isAdmin=false;
  try{isAdmin=!!(user&&await user.canEdit())}catch(e){}
- window.__canAdmin=!!(db&&isAdmin);
+ window.__canAdmin=!!(db&&isAdmin);if(!db)$("adm").hidden=true;
  window.__start=()=>{if(window.__started||!window.__canAdmin)return;window.__started=true;
   $("nav").hidden=false;
   db.collection("soumissions").orderBy("ts","desc").onSnapshot(q=>{rows=q.docs.map(d=>({...d.data(),_id:d.id}));render()},e=>{$("list").innerHTML='<div class="msg er">Lecture impossible : '+esc(e.message||e.code)+'</div>'});
