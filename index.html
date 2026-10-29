@@ -252,7 +252,7 @@ function show(v){if(v==="D"&&!window.__admin){v="F"}$("vF").hidden=v!=="F";$("vD
  try{history.replaceState(null,"",v==="D"?"#tableau-de-bord":"#formulaire")}catch(e){}}
 $("tF").onclick=()=>show("F");$("tD").onclick=()=>show("D");
 
-$("adm").onclick=ev=>{ev.preventDefault();$("gate").hidden=!$("gate").hidden};
+$("adm").onclick=ev=>{ev.preventDefault();$("gate").hidden=!$("gate").hidden;if(!$("gate").hidden){$("gate").scrollIntoView({behavior:"smooth",block:"center"});$("ge").focus()}};
 async function load(){
  const {data,error}=await sb.from("soumissions").select("id,data,statut,created_at").order("created_at",{ascending:false});
  if(error){$("list").innerHTML='<div class="msg er">Lecture impossible : '+esc(error.message)+'</div>';return false}
