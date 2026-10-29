@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Fiche projet – Porteurs de projets agricoles</title>
+<title>Fiche d’opportunité – Porteurs de projets agricoles</title>
 <style>
 :root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
 --bg:#f6f4ee;--card:#fff;--tx:#1f2a22;--mu:#66716a;--ac:#2e6b45;--ac2:#e4efe7;--bd:#d8d6cc;--er:#b3261e}
@@ -13,32 +13,37 @@ html{scroll-padding-top:env(safe-area-inset-top,0px)}
 *,*::before,*::after{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
 main{max-width:760px;margin:0 auto;padding:20px 16px 60px}
-h1{font-size:1.6rem;margin:.2em 0 .1em}
+h1{font-size:1.5rem;margin:.2em 0 .1em}
 .sub{color:var(--mu);margin:0 0 18px}
 nav{display:flex;gap:8px;margin-bottom:16px}
 nav button{flex:1;padding:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;font:inherit;cursor:pointer}
 nav button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
 fieldset{border:1px solid var(--bd);background:var(--card);border-radius:14px;margin:0 0 16px;padding:14px 16px 6px}
 legend{font-weight:700;color:var(--ac);padding:0 8px;font-size:1.05rem}
-label{display:block;margin:0 0 14px;font-weight:600;font-size:.92rem}
+label,.lbl{display:block;margin:0 0 14px;font-weight:600;font-size:.92rem}
+.hint{display:block;font-weight:400;color:var(--mu);font-size:.82rem}
 input,textarea,select{display:block;width:100%;margin-top:5px;padding:10px;font:inherit;font-weight:400;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px}
 textarea{min-height:80px;resize:vertical}
 input:focus,textarea:focus,select:focus{outline:2px solid var(--ac);border-color:transparent}
+.rrow{display:grid;grid-template-columns:1fr 150px 34px;gap:6px;margin-bottom:8px}
+.rrow input{margin:0}
+.x{border:1px solid var(--bd);background:var(--bg);color:var(--mu);border-radius:8px;cursor:pointer}
 .btn{padding:12px 20px;border:0;border-radius:10px;background:var(--ac);color:#fff;font:inherit;font-weight:700;cursor:pointer}
 .btn.alt{background:var(--ac2);color:var(--ac)}
 .btn:disabled{opacity:.5}
 .msg{padding:12px 14px;border-radius:10px;background:var(--ac2);margin:12px 0}
 .msg.er{color:var(--er)}
-.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
 .item{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:10px;display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap}
 .item b{display:block}.item small{color:var(--mu)}
 [hidden]{display:none!important}
+@media (max-width:520px){.rrow{grid-template-columns:1fr 105px 32px}}
 </style>
 </head>
 <body>
 <main>
-<h1>Fiche projet agricole</h1>
-<p class="sub">Merci de remplir ce questionnaire. Seuls les champs essentiels sont à compléter ; le reste peut rester vide.</p>
+<h1>Fiche d’opportunité : projet agricole / agrobusiness</h1>
+<p class="sub">Merci de remplir ce questionnaire. Seuls le titre du projet et le contact sont obligatoires.</p>
 <nav id="nav" hidden><button id="tF" class="on">Questionnaire</button><button id="tD">Tableau de bord</button></nav>
 
 <section id="vF">
@@ -48,64 +53,107 @@ input:focus,textarea:focus,select:focus{outline:2px solid var(--ac);border-color
 </section>
 
 <section id="vD" hidden>
-<div class="row" style="margin-bottom:12px"><button class="btn" id="all">Tout exporter en un Word</button><span id="cnt" class="sub" style="margin:0"></span></div>
+<div class="row"><button class="btn" id="all">Tout exporter en un Word</button><span id="cnt" class="sub" style="margin:0"></span></div>
 <div id="list"></div>
 </section>
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script>
-// Schéma : [clé, libellé, type(t|a|n|s), options]
+// Schéma : [clé, libellé, type(t|a|l|r|n|s|rep), options, aide]
 const S=[
-{t:"1. Synthèse du projet",f:[["titre","Titre du projet"],["filiere","Filière agricole"],["loc","Localisation"],["surface","Surface exploitable / Échelle"],["stade","Stade du projet","s",["Extension d’exploitation et modernisation / mécanisation (projet structurant sur site existant)","Autre (à préciser)"]],["stade_autre","Si autre, précisez"],["montant","Montant recherché (FCFA)","n"],["partenariat","Type de partenariat"]]},
-{t:"2. Le problème et l’opportunité de marché",f:[["besoin","Besoin du marché","a"],["solution","La solution proposée","a"],["marche_local","Marché cible et débouchés : marché local","a"],["clients","Clients cibles","a"],["autres_deb","Autres débouchés","a"],["juridique","Atouts : structure juridique établie"],["logistique","Atouts : logistique et stockage"],["verger","Atouts : verger / cultures existantes"],["logement","Atouts : logement"],["autres_atouts","Autres atouts","a"]]},
-{t:"3. Modèle opérationnel et technique",f:[["systeme","Système de production","a"],["moyens","Moyens et infrastructures prévus","a"],["partenaires","Partenariats locaux et collaboration","a"]]},
-{t:"4. Indicateurs financiers projetés",f:[["besoin_global","Besoin global de financement (FCFA)","n"],["couts","Structure des coûts","a"],["revenus","Sources de revenus","a"],["impact_fin","Objectif d’impact financier","a"]]},
-{t:"5. Impact RSE et durabilité (ESG)",f:[["emplois","Création d’emplois directs et indirects","a"],["inclusion","Inclusion locale","a"],["durable","Pratiques durables et environnement","a"]]},
-{t:"6. Équipe et maîtrise des risques",f:[["equipe","Porteur de projet / Équipe","a"],["risques","Principaux risques identifiés et atténuation","a"]]},
-{t:"7. Utilisation du financement et contact",f:[["repartition","Répartition du besoin de financement (FCFA) : investissements disponibles ou à réaliser","a"],["contact","Contact (nom, téléphone, e-mail)","a"]]}
+{t:"1. Synthèse du Projet",f:[["titre","Titre du projet"],["filiere","Filière agricole","t",0,"ex. Maraîchage, arboriculture, élevage avicole…"],["loc","Localisation"],["surface","Surface exploitable / Échelle","t",0,"ex. 2 hectares"],["stade","Stade du projet","s",["Extension d'exploitation et modernisation / mécanisation (Projet structurant sur site existant)","Autre (à préciser)"]],["stade_autre","Si « Autre », précisez"],["montant","Montant recherché (FCFA)","n"],["partenariat","Type de partenariat","t",0,"ex. Subvention / Co-financement / Investissement à impact"]]},
+{t:"2. Le Problème & L'Opportunité de Marché",f:[["besoin","Besoin du marché","a"],["solution","La solution proposée","a"],["marche_local","Marché cible et débouchés : marché local","a"],["clients","Clients cibles","a"],["autres_deb","Autres débouchés","a"],["juridique","Atout : structure juridique établie","t",0,"ex. GIE avec registre de commerce et NINEA"],["logistique","Atout : logistique et stockage"],["verger","Atout : verger / cultures / élevage existants"],["logement","Atout : logement"],["autres_atouts","Autres atouts existants","l",0,"Un atout par ligne"]]},
+{t:"3. Modèle Opérationnel & Technique",f:[["systeme","Système de production","a"],["moyens","Moyens et infrastructures prévus","l",0,"Un élément par ligne"],["partenaires","Partenariats locaux et collaboration","l",0,"Un partenariat par ligne"]]},
+{t:"4. Indicateurs Financiers Projetés",f:[["besoin_global","Besoin global de financement (FCFA)","n"],["couts","Structure des coûts","a"],["revenus","Sources de revenus","a"],["impact_fin","Objectif d'impact financier","a"]]},
+{t:"5. Impact RSE & Durabilité (ESG)",f:[["emplois","Création d'emplois directs et indirects","a"],["inclusion","Inclusion locale","a"],["durable","Pratiques durables et environnement","l",0,"Une pratique par ligne"]]},
+{t:"6. Équipe & Maîtrise des Risques",f:[["equipe","Porteur de projet / Équipe","a"],["risques","Principaux risques identifiés et atténuation","r",0,"Un risque par ligne, au format : Risque : mesure d’atténuation"]]},
+{t:"7. Utilisation du Financement & Contact",f:[["repartition","Répartition du besoin de financement (FCFA)","rep",0,"Listez les investissements : les pourcentages sont calculés automatiquement."],["contact","Contact (nom, téléphone, e-mail)","a"]]}
 ];
 const $=id=>document.getElementById(id);
 const esc=s=>String(s??"").replace(/[<>&"]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c]));
 
-// ---- Rendu du formulaire
-$("form").innerHTML=S.map((s,i)=>`<fieldset><legend>${esc(s.t)}</legend>`+s.f.map(([k,l,ty,o])=>{
- const id="f_"+k;
- if(ty==="a")return`<label>${esc(l)}<textarea id="${id}"></textarea></label>`;
- if(ty==="n")return`<label>${esc(l)}<input id="${id}" inputmode="numeric" placeholder="ex. 25 000 000"></label>`;
- if(ty==="s")return`<label>${esc(l)}<select id="${id}"><option value="">— Choisir —</option>${o.map(x=>`<option>${esc(x)}</option>`).join("")}</select></label>`;
- return`<label>${esc(l)}<input id="${id}"></label>`}).join("")+`</fieldset>`).join("");
-
-const collect=()=>{const d={};S.forEach(s=>s.f.forEach(([k])=>d[k]=$("f_"+k).value.trim()));return d};
-
-// ---- Génération Word (.docx) sans dépendance autre que JSZip
+//<DOCX>
 const x=s=>String(s??"").replace(/[<>&]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]));
-const run=(t,o={})=>{const parts=String(t).split("\n").map(p=>`<w:t xml:space="preserve">${x(p)}</w:t>`).join("<w:br/>");
- return`<w:r><w:rPr>${o.b?"<w:b/>":""}${o.c?`<w:color w:val="${o.c}"/>`:""}<w:sz w:val="${o.s||22}"/></w:rPr>${parts}</w:r>`};
-const para=(runs,sp=120)=>`<w:p><w:pPr><w:spacing w:after="${sp}"/></w:pPr>${runs}</w:p>`;
-function body(d){
- let h=para(run(d.titre||"Projet sans titre",{b:1,s:36,c:"2E6B45"}),60);
- h+=para(run("Fiche projet – reçue le "+(d.date||""),{s:18,c:"666666"}),240);
- S.forEach(s=>{
-  h+=`<w:p><w:pPr><w:keepNext/><w:pBdr><w:bottom w:val="single" w:sz="6" w:color="2E6B45"/></w:pBdr><w:spacing w:before="280" w:after="140"/></w:pPr>${run(s.t,{b:1,s:26,c:"2E6B45"})}</w:p>`;
-  s.f.forEach(([k,l])=>{const v=d[k];if(v)h+=para(run(l+" : ",{b:1})+run(k.startsWith("montant")||k==="besoin_global"?v+" FCFA":v))});
- });
- return h;
+const num=v=>parseInt(String(v||"").replace(/\D/g,""),10)||0;
+const fmt=n=>String(n).replace(/\B(?=(\d{3})+(?!\d))/g," ");
+const money=v=>{v=String(v||"").trim();if(!v)return"";const m=/^[\d\s.,]+$/.test(v)?fmt(num(v)):v;return /fcfa/i.test(m)?m:m+" FCFA"};
+const lines=v=>String(v||"").split("\n").map(s=>s.replace(/^\s*[-•●○*]\s*/,"").trim()).filter(Boolean);
+const R=(t,b)=>`<w:r>${b?"<w:rPr><w:b/><w:bCs/></w:rPr>":""}${String(t).split("\n").map(s=>`<w:t xml:space="preserve">${x(s)}</w:t>`).join("<w:br/>")}</w:r>`;
+const BUL=(lv,runs)=>`<w:p><w:pPr><w:numPr><w:ilvl w:val="${lv}"/><w:numId w:val="1"/></w:numPr><w:ind w:left="${lv?1200:600}" w:hanging="360"/></w:pPr>${runs}</w:p>`;
+const H2=t=>`<w:p><w:pPr><w:pStyle w:val="Heading2"/></w:pPr>${R(t)}</w:p>`;
+const b0=(l,v)=>v?BUL(0,R(l,1)+R(" "+v)):"";
+const b0h=l=>BUL(0,R(l,1));
+const b1=(t,bl)=>BUL(1,bl?R(bl,1)+R(" "+t):R(t));
+const cell=(t,b,fill)=>`<w:tc><w:tcPr><w:tcW w:w="4680" w:type="dxa"/>${fill?`<w:shd w:val="clear" w:color="auto" w:fill="${fill}"/>`:""}<w:tcMar><w:top w:w="120" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:bottom w:w="120" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar></w:tcPr><w:p>${t?R(t,b):""}</w:p></w:tc>`;
+const bd=n=>`<w:${n} w:val="single" w:color="000000" w:sz="6" w:space="0"/>`;
+function table(rows){
+ return`<w:tbl><w:tblPr><w:tblW w:w="9360" w:type="dxa"/><w:tblBorders>${["top","left","bottom","right","insideH","insideV"].map(bd).join("")}</w:tblBorders><w:tblLayout w:type="fixed"/><w:tblCellMar><w:top w:w="100" w:type="dxa"/><w:left w:w="100" w:type="dxa"/><w:bottom w:w="100" w:type="dxa"/><w:right w:w="100" w:type="dxa"/></w:tblCellMar></w:tblPr><w:tblGrid><w:gridCol w:w="4680"/><w:gridCol w:w="4680"/></w:tblGrid>`+
+ `<w:tr><w:trPr><w:tblHeader/></w:trPr>${cell("Indicateur",1,"F2F2F2")}${cell("Valeur estimée / Information",1,"F2F2F2")}</w:tr>`+
+ rows.map(([a,b])=>`<w:tr>${cell(a,1)}${cell(b)}</w:tr>`).join("")+`</w:tbl>`;
 }
+function body(d,first){
+ let o=`<w:p><w:pPr><w:pStyle w:val="Heading1"/>${first?"":"<w:pageBreakBefore/>"}</w:pPr>${R("FICHE D'OPPORTUNITÉ : PROJET AGRICOLE / AGROBUSINESS")}</w:p>`;
+ const grp=(head,items)=>items.filter(Boolean).length?b0h(head)+items.join(""):"";
+ const rep=(Array.isArray(d.repartition)?d.repartition:[]).filter(r=>r&&(r.p||r.m));
+ const sum=rep.reduce((a,r)=>a+num(r.m),0);
+ const stade=/^Autre/.test(d.stade||"")&&d.stade_autre?d.stade_autre:(d.stade||"");
+ o+=H2("1. Synthèse du Projet")+b0("Titre du projet :",d.titre)+b0("Filière agricole :",d.filiere)+b0("Localisation :",d.loc)+b0("Surface exploitable / Échelle :",d.surface)+b0("Stade du projet :",stade)+b0("Montant recherché :",money(d.montant))+b0("Type de partenariat :",d.partenariat);
+ o+=H2("2. Le Problème & L'Opportunité de Marché")+b0("Besoin du marché :",d.besoin)+b0("La Solution proposée :",d.solution);
+ o+=grp("Marché cible & Débouchés :",[d.marche_local&&b1(d.marche_local),d.clients&&b1(d.clients,"Clients cibles :"),d.autres_deb&&b1(d.autres_deb,"Autres :")]);
+ o+=grp("Engagements & Atouts existants :",[d.juridique&&b1("Structure juridique établie : "+d.juridique),d.logistique&&b1("Logistique et stockage : "+d.logistique),d.verger&&b1("Verger existant : "+d.verger),d.logement&&b1("Logement : "+d.logement),...lines(d.autres_atouts).map(l=>b1(l))]);
+ o+=H2("3. Modèle Opérationnel & Technique")+b0("Système de production :",d.systeme);
+ o+=grp("Moyens et Infrastructures prévus :",lines(d.moyens).map(l=>b1(l)))+grp("Partenariats locaux & Collaboration :",lines(d.partenaires).map(l=>b1(l)));
+ o+=H2("4. Indicateurs Financiers Projetés")+table([["Besoin Global de Financement",money(d.besoin_global)],["Structure des Coûts",d.couts||""],["Sources de Revenus",d.revenus||""],["Objectif d'Impact Financier",d.impact_fin||""]]);
+ o+=H2("5. Impact RSE & Durabilité (ESG)")+b0("Création d'emplois directs et indirects :",d.emplois)+b0("Inclusion locale :",d.inclusion)+grp("Pratiques durables & Environnement :",lines(d.durable).map(l=>b1(l)));
+ o+=H2("6. Équipe & Maîtrise des Risques")+b0("Porteur de projet / Équipe :",d.equipe)+grp("Principaux risques identifiés et Atténuation :",lines(d.risques).map(l=>{const i=l.indexOf(":");return i>0?b1(l.slice(i+1).trim(),l.slice(0,i+1)):b1(l)}));
+ o+=H2("7. Utilisation du Financement & Contact");
+ if(rep.length)o+=b0h("Répartition du besoin de financement (Total : "+fmt(sum||num(d.besoin_global))+" FCFA) :")+rep.map(r=>b1(fmt(num(r.m))+" FCFA"+(sum?" ("+(num(r.m)/sum*100).toFixed(1).replace(".",",")+"%)":""),(r.p||"Poste")+" :")).join("");
+ o+=b0("Contact :",d.contact);
+ return o;
+}
+const NS='xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"';
+const hs=(id,nm,sz,sp,lv)=>`<w:style w:type="paragraph" w:styleId="${id}"><w:name w:val="${nm}"/><w:basedOn w:val="Normal"/><w:next w:val="Normal"/><w:qFormat/><w:pPr><w:keepNext/><w:spacing w:before="${sp}" w:after="${sp}"/><w:outlineLvl w:val="${lv}"/></w:pPr><w:rPr><w:b/><w:bCs/><w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/></w:rPr></w:style>`;
+const STYLES=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles ${NS}><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:eastAsia="Arial" w:cs="Arial"/><w:sz w:val="22"/><w:szCs w:val="22"/><w:lang w:val="fr-FR"/></w:rPr></w:rPrDefault><w:pPrDefault/></w:docDefaults><w:style w:type="paragraph" w:default="1" w:styleId="Normal"><w:name w:val="Normal"/><w:qFormat/><w:pPr><w:widowControl w:val="0"/></w:pPr></w:style>${hs("Heading1","heading 1",48,240,0)}${hs("Heading2","heading 2",36,225,1)}</w:styles>`;
+const lvl=(i,ch,l)=>`<w:lvl w:ilvl="${i}"><w:start w:val="1"/><w:numFmt w:val="bullet"/><w:lvlText w:val="${ch}"/><w:lvlJc w:val="left"/><w:pPr><w:ind w:left="${l}" w:hanging="360"/></w:pPr><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/></w:rPr></w:lvl>`;
+const NUMB=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:numbering ${NS}><w:abstractNum w:abstractNumId="0"><w:multiLevelType w:val="hybridMultilevel"/>${lvl(0,"●",600)}${lvl(1,"○",1200)}</w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num></w:numbering>`;
 async function buildDocx(list){
- const br='<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
- const doc=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${list.map(body).join(br)}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/></w:sectPr></w:body></w:document>`;
- const z=new JSZip();
- z.file("[Content_Types].xml",`<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`);
- z.file("_rels/.rels",`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
- z.file("word/document.xml",doc);
+ const doc=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document ${NS}><w:body>${list.map((d,i)=>body(d,!i)).join("")}<w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="0" w:footer="720" w:gutter="0"/></w:sectPr></w:body></w:document>`;
+ const z=new JSZip(),P="http://schemas.openxmlformats.org/";
+ z.file("[Content_Types].xml",`<?xml version="1.0" encoding="UTF-8"?><Types xmlns="${P}package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/><Override PartName="/word/numbering.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.numbering+xml"/></Types>`);
+ z.file("_rels/.rels",`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="${P}package/2006/relationships"><Relationship Id="rId1" Type="${P}officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
+ z.file("word/_rels/document.xml.rels",`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="${P}package/2006/relationships"><Relationship Id="rId1" Type="${P}officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId2" Type="${P}officeDocument/2006/relationships/numbering" Target="numbering.xml"/></Relationships>`);
+ z.file("word/document.xml",doc);z.file("word/styles.xml",STYLES);z.file("word/numbering.xml",NUMB);
  return z.generateAsync({type:"blob",compression:"DEFLATE"});
 }
+//</DOCX>
+
+// ---- Rendu du formulaire
+let rep=[{p:"",m:""},{p:"",m:""},{p:"",m:""}];
+const fld=([k,l,ty,o,h])=>{const id="f_"+k,ph=esc(h||"");
+ if(ty==="rep")return`<div class="lbl">${esc(l)}<small class="hint">${ph}</small><div id="rep" style="margin-top:8px"></div><div class="row"><button type="button" class="btn alt" id="addrep">+ Ajouter un poste</button><b id="reptot" style="margin-left:auto"></b></div></div>`;
+ const hint=h&&"alr".includes(ty)?`<small class="hint">${ph}</small>`:"";
+ if("alr".includes(ty))return`<label>${esc(l)}${hint}<textarea id="${id}"></textarea></label>`;
+ if(ty==="n")return`<label>${esc(l)}<input id="${id}" inputmode="numeric" placeholder="ex. 12 000 000"></label>`;
+ if(ty==="s")return`<label>${esc(l)}<select id="${id}"><option value="">— Choisir —</option>${o.map(v=>`<option>${esc(v)}</option>`).join("")}</select></label>`;
+ return`<label>${esc(l)}<input id="${id}" placeholder="${ph}"></label>`};
+$("form").innerHTML=S.map(s=>`<fieldset><legend>${esc(s.t)}</legend>${s.f.map(fld).join("")}</fieldset>`).join("");
+const tot=()=>{const t=rep.reduce((a,r)=>a+num(r.m),0);$("reptot").textContent=t?"Total : "+fmt(t)+" FCFA":""};
+function drawRep(){
+ $("rep").innerHTML=rep.map((r,i)=>`<div class="rrow"><input data-i="${i}" data-k="p" placeholder="Poste (ex. Forage et pompe solaire)" value="${esc(r.p)}"><input data-i="${i}" data-k="m" inputmode="numeric" placeholder="Montant FCFA" value="${esc(r.m)}"><button type="button" class="x" data-x="${i}" aria-label="Supprimer">✕</button></div>`).join("");
+ $("rep").querySelectorAll("input").forEach(el=>el.oninput=()=>{rep[+el.dataset.i][el.dataset.k]=el.value;tot()});
+ $("rep").querySelectorAll(".x").forEach(b=>b.onclick=()=>{rep.splice(+b.dataset.x,1);drawRep()});tot();
+}
+drawRep();$("addrep").onclick=()=>{rep.push({p:"",m:""});drawRep()};
+
+const collect=()=>{const d={};S.forEach(s=>s.f.forEach(([k,,ty])=>{if(ty!=="rep")d[k]=$("f_"+k).value.trim()}));
+ d.repartition=rep.filter(r=>r.p.trim()||num(r.m)).map(r=>({p:r.p.trim(),m:num(r.m)}));return d};
+
 const slug=s=>(s||"projet").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/gi,"-").replace(/^-|-$/g,"").slice(0,50)||"projet";
 let dl=null,db=null,user=null;
 async function saveWord(list,name){
  if(!dl){alert("Le téléchargement n’est pas disponible dans cette vue.");return}
- try{await dl.save({filename:name+".docx",data:await buildDocx(list)})}catch(e){if(e&&e.code!=="declined")alert("Échec du téléchargement : "+(e.message||e.code))}
+ try{await dl.save({filename:name+".docx",data:await buildDocx(list)})}catch(e){if(!e||e.code!=="declined")alert("Échec du téléchargement : "+((e&&(e.message||e.code))||e))}
 }
 
 // ---- Envoi
@@ -113,9 +161,8 @@ $("send").onclick=async()=>{
  const d=collect(),r=$("res");
  if(!d.titre||!d.contact){r.innerHTML='<div class="msg er">Merci de renseigner au moins le titre du projet et un contact.</div>';return}
  d.date=new Date().toLocaleDateString("fr-FR");d.ts=Date.now();
- r.innerHTML="";
- let ok=false;
- if(db&&user){$("send").disabled=true;try{await db.doc("soumissions/"+await user.id()).set(d);ok=true}catch(e){r.innerHTML='<div class="msg er">L’envoi automatique a échoué ('+esc(e.message||e.code||"erreur")+'). Vous pouvez télécharger votre fiche ci-dessous et l’envoyer par e-mail.</div>'}$("send").disabled=false}
+ r.innerHTML="";let ok=false;
+ if(db&&user){$("send").disabled=true;try{await db.doc("soumissions/"+await user.id()).set(d);ok=true}catch(e){r.innerHTML='<div class="msg er">L’envoi automatique a échoué ('+esc(e.message||e.code||"erreur")+'). Téléchargez votre fiche ci-dessous et envoyez-la par e-mail.</div>'}$("send").disabled=false}
  else r.innerHTML='<div class="msg er">L’envoi automatique n’est pas disponible ici. Téléchargez votre fiche et envoyez-la par e-mail.</div>';
  r.innerHTML+=(ok?'<div class="msg">✅ Merci ! Votre projet a bien été transmis.</div>':"")+(dl?'<button class="btn alt" id="mine">Télécharger ma copie (Word)</button>':"");
  const b=$("mine");if(b)b.onclick=()=>saveWord([d],"fiche-"+slug(d.titre));
@@ -125,12 +172,11 @@ $("send").onclick=async()=>{
 let rows=[];
 function renderList(){
  $("cnt").textContent=rows.length+" projet(s) reçu(s)";
- $("list").innerHTML=rows.length?rows.map((d,i)=>`<div class="item"><div><b>${esc(d.titre)}</b><small>${esc([d.filiere,d.loc,d.montant&&d.montant+" FCFA",d.date].filter(Boolean).join(" · "))}</small></div><button class="btn alt" data-i="${i}">Word</button></div>`).join(""):'<div class="msg">Aucune réponse pour le moment.</div>';
+ $("list").innerHTML=rows.length?rows.map((d,i)=>`<div class="item"><div><b>${esc(d.titre)}</b><small>${esc([d.filiere,d.loc,d.montant&&money(d.montant),d.date].filter(Boolean).join(" · "))}</small></div><button class="btn alt" data-i="${i}">Word</button></div>`).join(""):'<div class="msg">Aucune réponse pour le moment.</div>';
  $("list").querySelectorAll("button").forEach(b=>b.onclick=()=>{const d=rows[+b.dataset.i];saveWord([d],"fiche-"+slug(d.titre))});
  $("all").disabled=!rows.length;
 }
 $("all").onclick=()=>saveWord(rows,"fiches-projets-"+new Date().toISOString().slice(0,10));
-
 function show(v){$("vF").hidden=v!=="F";$("vD").hidden=v!=="D";$("tF").classList.toggle("on",v==="F");$("tD").classList.toggle("on",v==="D");
  try{history.replaceState(null,"",v==="D"?"#tableau-de-bord":"#formulaire")}catch(e){}}
 $("tF").onclick=()=>show("F");$("tD").onclick=()=>show("D");
