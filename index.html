@@ -199,7 +199,7 @@ const collect=()=>{const d={};S.forEach(s=>s.f.forEach(([k,,ty])=>{if(ty!=="rep"
  d.repartition=rep.filter(r=>r.p.trim()||num(r.m)).map(r=>({p:r.p.trim(),m:num(r.m)}));return d};
 
 const slug=s=>(s||"projet").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/gi,"-").replace(/^-|-$/g,"").slice(0,50)||"projet";
-const SB_URL="COLLER_URL_SUPABASE",SB_KEY="COLLER_CLE_ANON";
+const SB_URL="https://vhdvctqdokojochhihqg.supabase.co",SB_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZoZHZjdHFkb2tvam9jaGhpaHFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMzMDcwMDksImV4cCI6MjEwODg4MzAwOX0.Yw7ULzhtvmQnxXyz9NXjzUK7AaUdatfTdP5RfK-Cv3M";
 const sb=supabase.createClient(SB_URL,SB_KEY);
 let ADM=null;
 const toast=(m,e)=>{const t=$("toast");t.textContent=m;t.className="msg"+(e?" er":"");t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,6000)};
@@ -242,7 +242,7 @@ function render(){
  $("list").querySelectorAll("[data-w]").forEach(b=>b.onclick=async()=>{const d=cur[+b.dataset.w],t=b.textContent;b.disabled=true;b.textContent="⏳ Génération…";
   await saveWord([d],"Rapport_Projet_"+slug(d.porteur||d.titre).replace(/-/g,"_")+"_"+iso());b.disabled=false;b.textContent=t});
  $("list").querySelectorAll("[data-s]").forEach(b=>b.onclick=async()=>{const d=cur[+b.dataset.s];
-  const {error}=await sb.rpc("admin_set_statut",{p_email:ADM.e,p_pw:ADM.p,p_id:d._id,p_v:(st[d._id]||"attente")==="traite"?"attente":"traite"});
+  const {error}=await sb.from("soumissions").update({statut:(st[d._id]||"attente")==="traite"?"attente":"traite"}).eq("id",d._id);
   if(error)toast("Statut non modifié : "+error.message,1);else load()});
 }
 ["q","ft","fz","fs","fp"].forEach(id=>$(id).oninput=render);
@@ -254,15 +254,18 @@ $("tF").onclick=()=>show("F");$("tD").onclick=()=>show("D");
 
 $("adm").onclick=ev=>{ev.preventDefault();$("gate").hidden=!$("gate").hidden};
 async function load(){
- const {data,error}=await sb.rpc("admin_list",{p_email:ADM.e,p_pw:ADM.p});
+ const {data,error}=await sb.from("soumissions").select("id,data,statut,created_at").order("created_at",{ascending:false});
  if(error){$("list").innerHTML='<div class="msg er">Lecture impossible : '+esc(error.message)+'</div>';return false}
  rows=data.map(r=>({...r.data,_id:r.id,ts:Date.parse(r.created_at)}));st={};data.forEach(r=>st[r.id]=r.statut);render();return true}
+async function openAdmin(){
+ if(!await load())return false;
+ ADM=true;$("nav").hidden=false;$("gate").hidden=true;window.__admin=true;show("D");
+ setInterval(()=>{if(ADM)load()},15000);return true}
 $("gok").onclick=async()=>{
- ADM={e:$("ge").value.trim(),p:$("gp").value.trim()};
- if(!await load()){ADM=null;toast("E-mail ou mot de passe incorrect.",1);return}
- $("nav").hidden=false;$("gate").hidden=true;$("gp").value="";window.__admin=true;show("D");
- setInterval(()=>{if(ADM)load()},15000);
-};
+ const {error}=await sb.auth.signInWithPassword({email:$("ge").value.trim(),password:$("gp").value});
+ if(error){toast("E-mail ou mot de passe incorrect.",1);return}
+ $("gp").value="";await openAdmin()};
+sb.auth.getSession().then(({data})=>{if(data&&data.session)openAdmin()});
 </script>
 </body>
 </html>
