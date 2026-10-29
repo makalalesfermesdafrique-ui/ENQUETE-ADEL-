@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Fiche projet – Porteurs de projets agricoles</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f6f4ee;--card:#fff;--tx:#1f2a22;--mu:#66716a;--ac:#2e6b45;--ac2:#e4efe7;--bd:#d8d6cc;--er:#b3261e}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141a16;--card:#1c2420;--tx:#e8ece9;--mu:#9aa69e;--ac:#6cc38c;--ac2:#243a2c;--bd:#33403a;--er:#f2b8b5}}
+:root[data-theme="dark"]{--bg:#141a16;--card:#1c2420;--tx:#e8ece9;--mu:#9aa69e;--ac:#6cc38c;--ac2:#243a2c;--bd:#33403a;--er:#f2b8b5}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:760px;margin:0 auto;padding:20px 16px 60px}
+h1{font-size:1.6rem;margin:.2em 0 .1em}
+.sub{color:var(--mu);margin:0 0 18px}
+nav{display:flex;gap:8px;margin-bottom:16px}
+nav button{flex:1;padding:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);border-radius:10px;font:inherit;cursor:pointer}
+nav button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+fieldset{border:1px solid var(--bd);background:var(--card);border-radius:14px;margin:0 0 16px;padding:14px 16px 6px}
+legend{font-weight:700;color:var(--ac);padding:0 8px;font-size:1.05rem}
+label{display:block;margin:0 0 14px;font-weight:600;font-size:.92rem}
+input,textarea,select{display:block;width:100%;margin-top:5px;padding:10px;font:inherit;font-weight:400;color:var(--tx);background:var(--bg);border:1px solid var(--bd);border-radius:8px}
+textarea{min-height:80px;resize:vertical}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--ac);border-color:transparent}
+.btn{padding:12px 20px;border:0;border-radius:10px;background:var(--ac);color:#fff;font:inherit;font-weight:700;cursor:pointer}
+.btn.alt{background:var(--ac2);color:var(--ac)}
+.btn:disabled{opacity:.5}
+.msg{padding:12px 14px;border-radius:10px;background:var(--ac2);margin:12px 0}
+.msg.er{color:var(--er)}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.item{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:12px 14px;margin-bottom:10px;display:flex;gap:10px;justify-content:space-between;align-items:center;flex-wrap:wrap}
+.item b{display:block}.item small{color:var(--mu)}
+[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+<h1>Fiche projet agricole</h1>
+<p class="sub">Merci de remplir ce questionnaire. Seuls les champs essentiels sont à compléter ; le reste peut rester vide.</p>
+<nav id="nav" hidden><button id="tF" class="on">Questionnaire</button><button id="tD">Tableau de bord</button></nav>
+
+<section id="vF">
+<div id="form"></div>
+<button class="btn" id="send">Envoyer mon projet</button>
+<div id="res"></div>
+</section>
+
+<section id="vD" hidden>
+<div class="row" style="margin-bottom:12px"><button class="btn" id="all">Tout exporter en un Word</button><span id="cnt" class="sub" style="margin:0"></span></div>
+<div id="list"></div>
+</section>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script>
+// Schéma : [clé, libellé, type(t|a|n|s), options]
+const S=[
+{t:"1. Synthèse du projet",f:[["titre","Titre du projet"],["filiere","Filière agricole"],["loc","Localisation"],["surface","Surface exploitable / Échelle"],["stade","Stade du projet","s",["Extension d’exploitation et modernisation / mécanisation (projet structurant sur site existant)","Autre (à préciser)"]],["stade_autre","Si autre, précisez"],["montant","Montant recherché (FCFA)","n"],["partenariat","Type de partenariat"]]},
+{t:"2. Le problème et l’opportunité de marché",f:[["besoin","Besoin du marché","a"],["solution","La solution proposée","a"],["marche_local","Marché cible et débouchés : marché local","a"],["clients","Clients cibles","a"],["autres_deb","Autres débouchés","a"],["juridique","Atouts : structure juridique établie"],["logistique","Atouts : logistique et stockage"],["verger","Atouts : verger / cultures existantes"],["logement","Atouts : logement"],["autres_atouts","Autres atouts","a"]]},
+{t:"3. Modèle opérationnel et technique",f:[["systeme","Système de production","a"],["moyens","Moyens et infrastructures prévus","a"],["partenaires","Partenariats locaux et collaboration","a"]]},
+{t:"4. Indicateurs financiers projetés",f:[["besoin_global","Besoin global de financement (FCFA)","n"],["couts","Structure des coûts","a"],["revenus","Sources de revenus","a"],["impact_fin","Objectif d’impact financier","a"]]},
+{t:"5. Impact RSE et durabilité (ESG)",f:[["emplois","Création d’emplois directs et indirects","a"],["inclusion","Inclusion locale","a"],["durable","Pratiques durables et environnement","a"]]},
+{t:"6. Équipe et maîtrise des risques",f:[["equipe","Porteur de projet / Équipe","a"],["risques","Principaux risques identifiés et atténuation","a"]]},
+{t:"7. Utilisation du financement et contact",f:[["repartition","Répartition du besoin de financement (FCFA) : investissements disponibles ou à réaliser","a"],["contact","Contact (nom, téléphone, e-mail)","a"]]}
+];
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??"").replace(/[<>&"]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;",'"':"&quot;"}[c]));
+
+// ---- Rendu du formulaire
+$("form").innerHTML=S.map((s,i)=>`<fieldset><legend>${esc(s.t)}</legend>`+s.f.map(([k,l,ty,o])=>{
+ const id="f_"+k;
+ if(ty==="a")return`<label>${esc(l)}<textarea id="${id}"></textarea></label>`;
+ if(ty==="n")return`<label>${esc(l)}<input id="${id}" inputmode="numeric" placeholder="ex. 25 000 000"></label>`;
+ if(ty==="s")return`<label>${esc(l)}<select id="${id}"><option value="">— Choisir —</option>${o.map(x=>`<option>${esc(x)}</option>`).join("")}</select></label>`;
+ return`<label>${esc(l)}<input id="${id}"></label>`}).join("")+`</fieldset>`).join("");
+
+const collect=()=>{const d={};S.forEach(s=>s.f.forEach(([k])=>d[k]=$("f_"+k).value.trim()));return d};
+
+// ---- Génération Word (.docx) sans dépendance autre que JSZip
+const x=s=>String(s??"").replace(/[<>&]/g,c=>({"<":"&lt;",">":"&gt;","&":"&amp;"}[c]));
+const run=(t,o={})=>{const parts=String(t).split("\n").map(p=>`<w:t xml:space="preserve">${x(p)}</w:t>`).join("<w:br/>");
+ return`<w:r><w:rPr>${o.b?"<w:b/>":""}${o.c?`<w:color w:val="${o.c}"/>`:""}<w:sz w:val="${o.s||22}"/></w:rPr>${parts}</w:r>`};
+const para=(runs,sp=120)=>`<w:p><w:pPr><w:spacing w:after="${sp}"/></w:pPr>${runs}</w:p>`;
+function body(d){
+ let h=para(run(d.titre||"Projet sans titre",{b:1,s:36,c:"2E6B45"}),60);
+ h+=para(run("Fiche projet – reçue le "+(d.date||""),{s:18,c:"666666"}),240);
+ S.forEach(s=>{
+  h+=`<w:p><w:pPr><w:keepNext/><w:pBdr><w:bottom w:val="single" w:sz="6" w:color="2E6B45"/></w:pBdr><w:spacing w:before="280" w:after="140"/></w:pPr>${run(s.t,{b:1,s:26,c:"2E6B45"})}</w:p>`;
+  s.f.forEach(([k,l])=>{const v=d[k];if(v)h+=para(run(l+" : ",{b:1})+run(k.startsWith("montant")||k==="besoin_global"?v+" FCFA":v))});
+ });
+ return h;
+}
+async function buildDocx(list){
+ const br='<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+ const doc=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${list.map(body).join(br)}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1134" w:right="1134" w:bottom="1134" w:left="1134"/></w:sectPr></w:body></w:document>`;
+ const z=new JSZip();
+ z.file("[Content_Types].xml",`<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`);
+ z.file("_rels/.rels",`<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
+ z.file("word/document.xml",doc);
+ return z.generateAsync({type:"blob",compression:"DEFLATE"});
+}
+const slug=s=>(s||"projet").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/gi,"-").replace(/^-|-$/g,"").slice(0,50)||"projet";
+let dl=null,db=null,user=null;
+async function saveWord(list,name){
+ if(!dl){alert("Le téléchargement n’est pas disponible dans cette vue.");return}
+ try{await dl.save({filename:name+".docx",data:await buildDocx(list)})}catch(e){if(e&&e.code!=="declined")alert("Échec du téléchargement : "+(e.message||e.code))}
+}
+
+// ---- Envoi
+$("send").onclick=async()=>{
+ const d=collect(),r=$("res");
+ if(!d.titre||!d.contact){r.innerHTML='<div class="msg er">Merci de renseigner au moins le titre du projet et un contact.</div>';return}
+ d.date=new Date().toLocaleDateString("fr-FR");d.ts=Date.now();
+ r.innerHTML="";
+ let ok=false;
+ if(db&&user){$("send").disabled=true;try{await db.doc("soumissions/"+await user.id()).set(d);ok=true}catch(e){r.innerHTML='<div class="msg er">L’envoi automatique a échoué ('+esc(e.message||e.code||"erreur")+'). Vous pouvez télécharger votre fiche ci-dessous et l’envoyer par e-mail.</div>'}$("send").disabled=false}
+ else r.innerHTML='<div class="msg er">L’envoi automatique n’est pas disponible ici. Téléchargez votre fiche et envoyez-la par e-mail.</div>';
+ r.innerHTML+=(ok?'<div class="msg">✅ Merci ! Votre projet a bien été transmis.</div>':"")+(dl?'<button class="btn alt" id="mine">Télécharger ma copie (Word)</button>':"");
+ const b=$("mine");if(b)b.onclick=()=>saveWord([d],"fiche-"+slug(d.titre));
+};
+
+// ---- Tableau de bord
+let rows=[];
+function renderList(){
+ $("cnt").textContent=rows.length+" projet(s) reçu(s)";
+ $("list").innerHTML=rows.length?rows.map((d,i)=>`<div class="item"><div><b>${esc(d.titre)}</b><small>${esc([d.filiere,d.loc,d.montant&&d.montant+" FCFA",d.date].filter(Boolean).join(" · "))}</small></div><button class="btn alt" data-i="${i}">Word</button></div>`).join(""):'<div class="msg">Aucune réponse pour le moment.</div>';
+ $("list").querySelectorAll("button").forEach(b=>b.onclick=()=>{const d=rows[+b.dataset.i];saveWord([d],"fiche-"+slug(d.titre))});
+ $("all").disabled=!rows.length;
+}
+$("all").onclick=()=>saveWord(rows,"fiches-projets-"+new Date().toISOString().slice(0,10));
+
+function show(v){$("vF").hidden=v!=="F";$("vD").hidden=v!=="D";$("tF").classList.toggle("on",v==="F");$("tD").classList.toggle("on",v==="D");
+ try{history.replaceState(null,"",v==="D"?"#tableau-de-bord":"#formulaire")}catch(e){}}
+$("tF").onclick=()=>show("F");$("tD").onclick=()=>show("D");
+
+(async()=>{
+ try{dl=await claude.use("downloads")}catch(e){}
+ try{db=await claude.use("db")}catch(e){}
+ try{user=await claude.use("user")}catch(e){}
+ if(db&&user&&user.canEdit()){
+  $("nav").hidden=false;
+  db.collection("soumissions").orderBy("ts","desc").onSnapshot(s=>{rows=s.docs.map(d=>d.data());renderList()},e=>{$("list").innerHTML='<div class="msg er">Lecture impossible : '+esc(e.message||e.code)+'</div>'});
+  if(location.hash==="#tableau-de-bord")show("D");
+ }
+})();
+</script>
+</body>
+</html>
