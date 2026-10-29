@@ -75,6 +75,7 @@ main{max-width:980px}
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 // Schéma : [clé, libellé, type(t|a|l|r|n|s|rep), options, aide]
 const S=[
@@ -198,12 +199,15 @@ const collect=()=>{const d={};S.forEach(s=>s.f.forEach(([k,,ty])=>{if(ty!=="rep"
  d.repartition=rep.filter(r=>r.p.trim()||num(r.m)).map(r=>({p:r.p.trim(),m:num(r.m)}));return d};
 
 const slug=s=>(s||"projet").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9]+/gi,"-").replace(/^-|-$/g,"").slice(0,50)||"projet";
-let dl=null,db=null,user=null;
+const SB_URL="COLLER_URL_SUPABASE",SB_KEY="COLLER_CLE_ANON";
+const sb=supabase.createClient(SB_URL,SB_KEY);
+let ADM=null;
 const toast=(m,e)=>{const t=$("toast");t.textContent=m;t.className="msg"+(e?" er":"");t.hidden=false;clearTimeout(toast.h);toast.h=setTimeout(()=>t.hidden=true,6000)};
 async function saveWord(list,name,custom){
- if(!dl){toast("Le téléchargement n’est pas disponible dans cette vue.",1);return false}
- try{await dl.save({filename:name+".docx",data:await buildDocx(list,custom)});toast("✅ Téléchargement lancé : "+name+".docx");return true}
- catch(e){if(e&&e.code==="declined")return false;toast("Échec de la génération : "+((e&&(e.message||e.code))||e),1);return false}
+ try{const blob=await buildDocx(list,custom),u=URL.createObjectURL(blob),a=document.createElement("a");
+  a.href=u;a.download=name+".docx";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000);
+  toast("✅ Téléchargement lancé : "+name+".docx");return true}
+ catch(e){toast("Échec de la génération : "+((e&&e.message)||e),1);return false}
 }
 
 // ---- Envoi
@@ -212,9 +216,11 @@ $("send").onclick=async()=>{
  if(!d.titre||!d.contact){r.innerHTML='<div class="msg er">Merci de renseigner au moins le titre du projet et un contact.</div>';return}
  d.date=new Date().toLocaleDateString("fr-FR");d.ts=Date.now();
  r.innerHTML="";let ok=false;
- if(db&&user){$("send").disabled=true;try{await db.doc("soumissions/"+await user.id()).set(d);ok=true}catch(e){r.innerHTML='<div class="msg er">L’envoi automatique a échoué ('+esc(e.message||e.code||"erreur")+'). Téléchargez votre fiche ci-dessous et envoyez-la par e-mail.</div>'}$("send").disabled=false}
- else r.innerHTML='<div class="msg er">L’envoi automatique n’est pas disponible dans cette vue. Ouvrez le lien officiel du questionnaire depuis votre navigateur, connecté à Claude avec l’accès donné par l’administrateur, puis réessayez. À défaut, téléchargez votre fiche et envoyez-la par e-mail.</div>';
- r.innerHTML+=(ok?'<div class="msg">✅ Merci ! Votre projet a bien été transmis.</div>':"")+(!ok&&dl?'<button class="btn alt" id="mine">Télécharger ma fiche (Word)</button>':"");
+ $("send").disabled=true;
+ try{const {error}=await sb.from("soumissions").insert({data:d});if(error)throw error;ok=true}
+ catch(e){r.innerHTML='<div class="msg er">L’envoi a échoué ('+esc(e.message||"erreur")+'). Téléchargez votre fiche ci-dessous et envoyez-la par e-mail.</div>'}
+ $("send").disabled=false;
+ r.innerHTML+=(ok?'<div class="msg">✅ Merci ! Votre projet a bien été transmis.</div>':"")+(!ok?'<button class="btn alt" id="mine">Télécharger ma fiche (Word)</button>':"");
  const b=$("mine");if(b)b.onclick=()=>saveWord([d],"fiche-"+slug(d.titre));
 };
 
@@ -235,7 +241,9 @@ function render(){
  $("list").innerHTML=cur.length?cur.map((d,i)=>{const s=st[d._id]||"attente";return`<div class="item"><div class="grow"><b>${esc(d.titre)}<span class="badge ${s}">${s==="traite"?"Traité":"En attente"}</span></b><small>${esc([d.porteur,TY(d),d.loc,d.montant&&money(d.montant),d.date].filter(Boolean).join(" · "))}</small><details><summary>Consulter le dossier</summary>${detail(d)}</details></div><div class="acts"><button class="btn" data-w="${i}">📄 OUVRIR LE RAPPORT WORD</button><button class="btn alt" data-s="${i}">${s==="traite"?"Remettre en attente":"Marquer traité"}</button></div></div>`}).join(""):'<div class="msg">Aucun dossier.</div>';
  $("list").querySelectorAll("[data-w]").forEach(b=>b.onclick=async()=>{const d=cur[+b.dataset.w],t=b.textContent;b.disabled=true;b.textContent="⏳ Génération…";
   await saveWord([d],"Rapport_Projet_"+slug(d.porteur||d.titre).replace(/-/g,"_")+"_"+iso());b.disabled=false;b.textContent=t});
- $("list").querySelectorAll("[data-s]").forEach(b=>b.onclick=async()=>{const d=cur[+b.dataset.s];try{await db.doc("statuts/"+d._id).set({v:(st[d._id]||"attente")==="traite"?"attente":"traite",ts:Date.now()})}catch(e){toast("Statut non modifié : "+(e.message||e.code),1)}});
+ $("list").querySelectorAll("[data-s]").forEach(b=>b.onclick=async()=>{const d=cur[+b.dataset.s];
+  const {error}=await sb.rpc("admin_set_statut",{p_email:ADM.e,p_pw:ADM.p,p_id:d._id,p_v:(st[d._id]||"attente")==="traite"?"attente":"traite"});
+  if(error)toast("Statut non modifié : "+error.message,1);else load()});
 }
 ["q","ft","fz","fs","fp"].forEach(id=>$(id).oninput=render);
 $("all").onclick=async()=>{const b=$("all"),t=b.textContent;b.disabled=true;b.textContent="⏳ Génération du rapport global…";
@@ -244,29 +252,17 @@ function show(v){if(v==="D"&&!window.__admin){v="F"}$("vF").hidden=v!=="F";$("vD
  try{history.replaceState(null,"",v==="D"?"#tableau-de-bord":"#formulaire")}catch(e){}}
 $("tF").onclick=()=>show("F");$("tD").onclick=()=>show("D");
 
-const ADMH="6d1b94d92985e5a9f71a4ee0c072497b435683fbbd9fbd634cb8986e48d60411";
-var sha=function a(b){function c(a,b){return a>>>b|a<<32-b}for(var d,e,f=Math.pow,g=f(2,32),h="length",i="",j=[],k=8*b[h],l=a.h=a.h||[],m=a.k=a.k||[],n=m[h],o={},p=2;64>n;p++)if(!o[p]){for(d=0;313>d;d+=p)o[d]=p;l[n]=f(p,.5)*g|0,m[n++]=f(p,1/3)*g|0}for(b+="\x80";b[h]%64-56;)b+="\x00";for(d=0;d<b[h];d++){if(e=b.charCodeAt(d),e>>8)return;j[d>>2]|=e<<(3-d)%4*8}for(j[j[h]]=k/g|0,j[j[h]]=k,e=0;e<j[h];){var q=j.slice(e,e+=16),r=l;for(l=l.slice(0,8),d=0;64>d;d++){var s=q[d-15],t=q[d-2],u=l[0],v=l[4],w=l[7]+(c(v,6)^c(v,11)^c(v,25))+(v&l[5]^~v&l[6])+m[d]+(q[d]=16>d?q[d]:q[d-16]+(c(s,7)^c(s,18)^s>>>3)+q[d-7]+(c(t,17)^c(t,19)^t>>>10)|0);l=[w+((c(u,2)^c(u,13)^c(u,22))+(u&l[1]^u&l[2]^l[1]&l[2]))|0].concat(l),l[4]=l[4]+w|0}for(d=0;8>d;d++)l[d]=l[d]+r[d]|0}for(d=0;8>d;d++)for(e=3;e+1;e--){var x=l[d]>>8*e&255;i+=(16>x?0:"")+x.toString(16)}return i};
 $("adm").onclick=ev=>{ev.preventDefault();$("gate").hidden=!$("gate").hidden};
+async function load(){
+ const {data,error}=await sb.rpc("admin_list",{p_email:ADM.e,p_pw:ADM.p});
+ if(error){$("list").innerHTML='<div class="msg er">Lecture impossible : '+esc(error.message)+'</div>';return false}
+ rows=data.map(r=>({...r.data,_id:r.id,ts:Date.parse(r.created_at)}));st={};data.forEach(r=>st[r.id]=r.statut);render();return true}
 $("gok").onclick=async()=>{
- let ok=false;try{const em=$("ge").value.trim().toLowerCase(),pw=$("gp").value.trim();ok=[pw,pw.charAt(0).toUpperCase()+pw.slice(1).toLowerCase()].some(w=>sha(em+"|"+w)===ADMH)}catch(e){}
- if(!ok){toast("E-mail ou mot de passe incorrect.",1);return}
- if(!window.__canAdmin){toast("Identifiants corrects, mais ce compte ne peut pas lire les dossiers. Ouvrez la page avec le compte Claude propriétaire.",1);return}
- window.__start();$("gate").hidden=true;$("gp").value="";window.__admin=true;show("D");
+ ADM={e:$("ge").value.trim(),p:$("gp").value.trim()};
+ if(!await load()){ADM=null;toast("E-mail ou mot de passe incorrect.",1);return}
+ $("nav").hidden=false;$("gate").hidden=true;$("gp").value="";window.__admin=true;show("D");
+ setInterval(()=>{if(ADM)load()},15000);
 };
-(async()=>{
- try{dl=await claude.use("downloads")}catch(e){}
- try{db=await claude.use("db")}catch(e){}
- try{user=await claude.use("user")}catch(e){}
- let isAdmin=false;
- try{isAdmin=!!(user&&await user.canEdit())}catch(e){}
- window.__canAdmin=!!(db&&isAdmin);
- window.__start=()=>{if(window.__started||!window.__canAdmin)return;window.__started=true;
-  $("nav").hidden=false;
-  db.collection("soumissions").orderBy("ts","desc").onSnapshot(q=>{rows=q.docs.map(d=>({...d.data(),_id:d.id}));render()},e=>{$("list").innerHTML='<div class="msg er">Lecture impossible : '+esc(e.message||e.code)+'</div>'});
-  db.collection("statuts").onSnapshot(q=>{st={};q.docs.forEach(d=>st[d.id]=(d.data()||{}).v);render()},()=>{});
-
- }
-})();
 </script>
 </body>
 </html>
